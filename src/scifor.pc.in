@@ -1,0 +1,14 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=@CMAKE_INSTALL_PREFIX@
+libdir=@CMAKE_INSTALL_PREFIX@/lib
+includedir=@CMAKE_INSTALL_PREFIX@/include
+fc_compiler=@CMAKE_Fortran_COMPILER@
+scifor_version=@VERSION_MAJOR@.@VERSION_MINOR@-@VERSION_PATCH@
+
+Name: SciFor
+Description: Modern Fortran bindings for selected scientific libraries
+Version: @VERSION_MAJOR@.@VERSION_MINOR@-@VERSION_PATCH@
+Requires:
+Conflicts:
+Cflags: @MyCFLAGS@
+Libs: @MyLDFLAGS@
