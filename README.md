@@ -1,7 +1,7 @@
 SciFor
 =====
 
-A project to implement a modern Fortran API to specialized classic libs
+A project to implement a modern Fortran API to specialized libs
 ---
 
 
@@ -11,9 +11,11 @@ A project to implement a modern Fortran API to specialized classic libs
 
 Fortran has been the prime computer programming language since the beginning of the scientific computing era. A vast amount of highly-proven and curated mathematical algoritms has been developed since the early versions, and many of them are still in current usage.
 
-As one of the key Fortran features has been backwards compatibility with older versions such as FORTRAN77, valuable algorithms written in old Fortran versions are kept in current usage. As an example, ODEPACK, from the Center for Applied Scientific Computing at the Lawrence Livermore National Laboratory. ODEPACK is a set of solvers for ODE Initial Value Problems.
+As one of the key Fortran features has been backwards compatibility with older versions such as FORTRAN77, valuable algorithms written in old Fortran versions are kept in current usage. As an example, ODEPACK, from the Center for Applied Scientific Computing at the Lawrence Livermore National Laboratory. ODEPACK is a set of solvers for ODE Initial Value Problems. There are many more.
 
-Lets compare the syntax of the `LSODAR()` subroutine:
+Unfortunately, original code can be challenging for new users due to its required preamble, especially for users accustomed to the flexible interfaces of modern languages, or it may be just a desirable feature to be able to use those powerful classic libraries using a modern, even an object oriented, interface.
+
+Lets compare the syntax of the `LSODAR()` subroutine and as provided by `SciFor`s  `odesolv%solve()`:
 
 * Original
 
@@ -45,7 +47,7 @@ Lets compare the syntax of the `LSODAR()` subroutine:
        jac=fjchem3, froots=frchem3, nfroots=2 )
 	```	
 	
-This project is aimed to promote the use of a formal lenaguaje such as Fortran among new users coming other modern languajes such as `Python`, etc., who may be demoralised for the steep, sometimes heteregeneous, learning curve of the diverse classic Fortran libraries available.
+This project is aimed to promote the use of a formal lenaguaje such as Fortran among new users coming other modern languajes such as `Python`, etc., who may be demoralised for the steep, learning curve of the diverse classic Fortran libraries available.
 	
 Contributions are invited and welcome.
 	
