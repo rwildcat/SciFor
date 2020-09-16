@@ -9,7 +9,7 @@
 
 program test_printmat
 
-   use SciFor
+   use scifor
    implicit none
 
 	! make some matrices
@@ -22,17 +22,30 @@ program test_printmat
    call random_number(ar4)
    ai = floor(100*ar4)
    
-   ! print double
+   print *, '** Double'
+   !
+   print *, '  -- fmt=default'
    call io_print_mat(ar8)
+   print *, '  -- fmt=f10.4'
    call io_print_mat(ar8, 'f10.4')
+   print *, '  -- fmt=3xe10.4'
    call io_print_mat(ar8, '3xe10.4')
+   print *, ''
 
-	! print single
+   print *, '** Single'
+   !
+   print *, '  -- fmt=default'
    call io_print_mat(ar4)
+   print *, '  -- fmt=f10.4'
    call io_print_mat(ar4, 'f10.4')
+   print *, ''
 
-	! print integer
+
+   print *, '** Integer'
+   !
+   print *, '  -- fmt=default'
    call io_print_mat(ai)
-   call io_print_mat(ai, 'i10.8')
+   print *, '  -- fmt=i8.4'
+   call io_print_mat(ai, 'i8.4')
    
 end program

@@ -6,18 +6,24 @@
 #    initial version
 # -----------------------------------------------------------------------------
 
+# -- prerequisites
+add_subdirectory (odepack)
 
 # -- main target
-set (ODEPACK_SRC odepack/opkdmain.f odepack/opkda1.f odepack/opkda2.f)
-add_library(scifor SciFor.f90 scifor_ode.f90 ${ODEPACK_SRC})
+add_library (scifor SciFor.f90 scifor_ode.f90)
 
+# add odepack library (objects!)
+target_link_libraries (scifor odepack)
+
+# or include odepack library objects directly w/o library
+# add_library(scifor SciFor.f90 scifor_ode.f90 $<TARGET_OBJECTS:odepack>)
 
 # -- force to use preprocessing (even *.f90 instead *.F90)
 SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp")
 
 
 # -- find_pkg for pc config file
-find_package(PkgConfig)
+find_package (PkgConfig)
 if (PkgConfig_FOUND)
 	# get path to pkg-config config files
 	pkg_get_variable(PC_PATHS pkg-config pc_path)
@@ -48,22 +54,22 @@ if (FGSL_FOUND)
 	endif()
 	
 else()
-	message("** WARNING: GNU Fortran Scientific Library (fgsl) not found")
+	message ("** WARNING: GNU Fortran Scientific Library (fgsl) not found")
 endif()
 
 
 # -- lapack
 # macOS: macport install *pc files in /opt/local/lib/lapack/pkgconfig/
 #	make sure to symlink or add to $PKG_CONFIG_PATH
-find_package(LAPACK)
+find_package (LAPACK)
 if (LAPACK_FOUND)
+
 	message ("--  LAPACK_LIBRARIES = ${LAPACK_LIBRARIES}")
 	target_link_libraries (scifor ${LAPACK_LIBRARIES})
-	add_compile_definitions(LAPACK)
+	add_compile_definitions (LAPACK)
 
 	# pk-config file
 	if (PkgConfig_FOUND)
-
 		pkg_search_module (LAPACK_M lapack)
 		if (LAPACK_M_MODULE_NAME)
 			list (APPEND MyCFLAGS  ${LAPACK_M_CFLAGS})
@@ -72,11 +78,10 @@ if (LAPACK_FOUND)
 		else()
 			message ("-- WARNING: LAPACK pkg-config info NOT found")
 		endif()
-
 	endif()
-
 else()
 	message ("** WARNING LAPACK not found")
+
 endif()
 
 # -- FFTW3
@@ -85,7 +90,7 @@ if (FFTW3_FOUND)
 
 	include_directories (${FFTW3_INCLUDE_DIRS})
 	target_link_libraries (scifor ${FFTW3_LIBRARIES})
-	add_compile_definitions(FFTW)
+	add_compile_definitions (FFTW)
 
 	# pk-config file
 	if (PkgConfig_FOUND)
@@ -95,13 +100,13 @@ if (FFTW3_FOUND)
 	endif()
 	
 else()
-	message("** WARNING: FFTW3 library not found")
+	message ("** WARNING: FFTW3 library not found")
 endif()
 
 
 # -- netCDF (from spacecenter.dk)
 set (NETCDF_F90 "YES")
-find_package(NetCDF)
+find_package (NetCDF)
 if (NetCDF_FOUND)
 
 	include_directories (${NETCDF_INCLUDES})

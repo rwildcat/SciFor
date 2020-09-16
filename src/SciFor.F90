@@ -1,12 +1,51 @@
 !># SciFor: A modern Fortran API to specialized libs
 !
-!##Soported libs    
+! Author: Ramon Solano
+!			 ramon.solano@gmail.com
+!			 Colima, Mexico
 !
-!  - `LAPACK` - linalg_solve $Ax=b$
-!  - `FGSL`   - `interp()`
-!  - `FFTW`   - `fft()`, `ifft()`
-!  - `NetCDF` - `get_var()`
-!  - `ODEPACK` - `Odesolv` (`LSODAR`), via `scifor_ode` module
+!## Contents
+!
+! 1. Linear algebra
+!	Computes the solution to system of linear equations A * X = B for GE matrices
+!	* SciFor	: linag_solve()
+!	* Library: `LAPACK` (<http://www.netlib.org/lapack/>)
+!	* Source : `dgesv()`
+!
+! 2. Interpolation
+!	Interpolates a 1-D array \(y_i\) corresponding to a set of \(x_i\) values, 
+! based on known \((x_j,y_j)\) point values. Includes Cubic, Akima, and Steffen
+! splines algorithms.
+!	* SciFor	 : interp_interp()
+!  * Library : 
+!		* [`FGSL`](https://doku.lrz.de/display/PUBLIC/FGSL+-+A+Fortran+interface+to+the+GNU+Scientific+Library)
+!		* [`GSL`](https://www.gnu.org/software/gsl/doc/html/index.html)
+!	* Source	 : [`interp()`](https://www.gnu.org/software/gsl/doc/html/interp.html)
+!
+! 3. FFT 
+!	Computes the discrete Fourier transform in 1D arrays, of arbitrary input
+! size, and of both real and complex data (as well as of even/odd data, i.e.
+! the discrete cosine/sine transforms or DCT/DST).
+!	* SciFor	 : `fft_fft()`, `fft_ifft()`
+!	* Library : [`FFTW`](http://www.fftw.org)
+!	* Source  : `dfftw_execute_dft_r2c()`
+!
+! 4. NetCDF
+! 	Reads data and attributes from NetCDF files.
+!	* SciFor  : `io_netcdf_getvar()`, `io_netcdf_getatt()`
+!	* Library :  [`NetCDF`](https://www.unidata.ucar.edu/software/netcdf
+!	* Source  : `nf90_get_var()`, `nf90_get_att()`
+!
+! 5. ODEPACK
+!	 Solves systems dy/dt = f with a dense or banded Jacobian when the problem is
+! stiff. It automatically selects between nonstiff (Adams) and stiff (BDF) 
+! methods. Additionally, a rootfinding capability is added.
+!	* SciFor  : ode%solve()
+!	* Library : ODEPACK
+!	* Source  : (), which automatically switches between nonstiff and stiff
+! solvers. Includes the solving for solutions of a related set of equations
+! (roots).
+!	* Source  : [`DLSODAR`](https://www.netlib.org/odepack/opkd-sum)
 ! 
 !
 !## To compile:

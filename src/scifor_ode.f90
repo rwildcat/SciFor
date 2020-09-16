@@ -32,14 +32,15 @@ module scifor_ode
     private
 
     type, public :: Odesolv
-        private
-        integer :: neq, itol, itask, istate, iopt, jtype, jac, nroots
-        real(8), allocatable :: rtol(:), atol(:), rwork(:)
-        real(8), allocatable :: dt(:), dy(:,:)
-        integer, allocatable :: iwork(:), jroot(:,:)
-        character(20)        :: solver
-        logical              :: initialized = .False.
-        integer              :: nchunk 
+         private
+        real(8), allocatable, public :: t(:), y(:,:), troot(:), yroot(:,:)
+        integer, allocatable, public  :: nfroot(:,:)
+        real(8), allocatable  :: rtol(:), atol(:), rwork(:)
+        integer               :: neq, itol, itask, istate, iopt, jtype, jac, nfr
+        integer, allocatable  :: iwork(:)                
+        character(20)         :: solver
+        logical               :: initialized = .False.
+        integer               :: nchunk 
         
     contains
         private
@@ -56,75 +57,70 @@ module scifor_ode
 
 contains
 
-   !> Constructor
-   function constructor(neq) result(Ode)
-
-      ! params
-      type(Odesolv)     :: Ode
-      integer,optional  :: neq
-
-      ! local vars
-      integer           :: neq_ = 1
-
-      if (present(neq)) neq_ = neq
-      call Ode%init(1)
+   !> Constructor 
+   ! To provide a canonical constructor function to be called as `ode = Odesolv()`
+   ! However, it is not called intrinsecally when the object is constructed
+   ! It is up to the user to call it
+   ! To work around, the function `Odesolv%init()` is provided and is called by the
+   ! constructor as only task. This way, `init()` can be called when necessary, as 
+   ! when the `solve()` procedure is called.
+   ! Constructor kept only for style completness
+   !
+   function constructor() result(Ode)
+      type(Odesolv)	:: Ode
+            
+      ! init
+      call Ode%init()
 
    end function constructor
 
 
-   !> Init for normal, simpler oper
+   !> Init
+   !
    subroutine init(this, neq)
-
-      ! params
       class(Odesolv)    :: this
       integer, optional :: neq
+      integer           :: neqw
 
-      ! local vars
-      integer           :: neq_ = 1
+      ! defaults
+      neqw = 1
+      if (present(neq)) neqw = neq
 
-      ! chack neq
-      if (present(neq)) neq_ = neq
-
-      ! init
+      ! init values
       this%solver = 'sodar'   ! default solver
-      this%neq    = neq_         ! 1 eq
-      this%itol   = 1         ! rtol=scalar, atol=scalar
-      this%itask  = 5         ! auto time step
+      this%neq    = neqw      ! n of eq to solve
+      this%itol   = 1         ! rtol, atol scalars (not arrays)
+      this%itask  = 5         ! auto time step dt
       this%istate = 1         ! first call
       this%iopt   = 1         ! optional inputs (rwork, iwork) present (tcritic)
-      this%nroots = 0         ! no roots required
-      this%jtype  = 2         ! internal jacobian
-      this%nchunk = 1024      ! n elem to alloc
+      this%nfr = 0            !  n of funct roots
+      this%jtype  = 2         ! computed jacobian
+      this%nchunk = 1024      ! n elem to alloc per chunk (t, y, roots, )
 
-      ! neq
-      if (present (neq)) neq_ = neq
-
-      this%neq = neq_
-
-      ! abs error tolerance (scalar)
+      ! abs error tolerance. default: scalar, no rtol
       if (allocated(this%atol)) deallocate(this%atol)
-      allocate(this%atol(1))
-      this%atol = 1d-6  
+      this%atol = [1d-6] 
 
       ! rel error tolerance (scalar)
       if (allocated(this%rtol)) deallocate(this%rtol)
-      allocate(this%rtol(1))
-      this%rtol = 0d0
+      this%rtol = [0d0]
 
+      ! rwork
       if (allocated(this%rwork)) deallocate(this%rwork)
-      allocate(this%rwork(this%neq*128))    ! experimental !!!
+      allocate(this%rwork(this%neq*128))    ! experimental value !!!
       this%rwork  = 0d0
 
+      ! iwork
       if (allocated(this%iwork)) deallocate(this%iwork)
       allocate(this%iwork(this%neq+25))
       this%iwork  = 0
 
-      ! system roots
-      if (allocated(this%jroot)) deallocate(this%jroot)
-
-      ! release dt, dy
-      if (allocated(this%dt)) deallocate(this%dt)
-      if (allocated(this%dy)) deallocate(this%dy)
+      ! clean results
+      if (allocated(this%t)) deallocate(this%t)
+      if (allocated(this%y)) deallocate(this%y)
+      if (allocated(this%troot)) deallocate(this%troot)
+      if (allocated(this%yroot)) deallocate(this%yroot)
+      if (allocated(this%nfroot)) deallocate(this%nfroot)
 
       this%initialized = .True.
       
@@ -140,21 +136,29 @@ contains
 
    !> Solve ODE (LSODAR)
    subroutine solve(this, fdy, y0, trng, tpts, rtol, atol, jac, froots, nfroots, dt)
-      class(Odesolv)        :: this
-      procedure()           :: fdy
-      real(8)               :: y0(:)
-      real(8), optional     :: trng(:), tpts(:), rtol(:), atol(:)
-      procedure(), optional :: jac, froots
-      integer, optional     :: nfroots
-      real(8), optional     :: dt
+      class(Odesolv)        :: this 
+      procedure()           :: fdy     ! diff function
+      real(8)               :: y0(:)   ! initial cond
+      real(8), optional     :: trng(:), tpts(:) ! t range
+      real(8), optional     :: rtol(:), atol(:) ! t points
+      procedure(), optional :: jac, froots      ! jac() and froots() functions
+      integer, optional     :: nfroots              ! n function rules in froots()
+      real(8), optional     :: dt               ! desired dt step
 
-      ! local (working) vars
-      procedure(), pointer :: froots0
-      real(8), allocatable :: dtw(:), dyw(:,:)
-      real(8)     :: yw(size(y0)), tw, dt0, tout
-      integer     :: itot, ichnk, iroot
-      integer, allocatable :: jrootw(:)
+      ! local vars
+      real(8), allocatable, target  :: t1(:), t2(:), y1(:,:), y2(:,:)
+      real(8),  pointer             :: pt(:), py(:,:)
+      real(8), allocatable, target  :: troot1(:), troot2(:), yroot1(:,:), yroot2(:,:)
+      real(8), pointer              :: ptroot(:), pyroot(:,:)
+      integer, allocatable, target  :: nfroot1(:,:), nfroot2(:,:)
+      integer, pointer              :: pnfroot(:,:)
+      !
+      real(8)     :: tw, tout, yw(size(y0)), dtw
+      integer, allocatable :: nfrootw(:)
+      integer     :: it, ir
       logical     :: doAnother
+            
+      ! ** number of functions is defined using the number of initial conditions `y0`**
 
       ! validate t
       if (.not. present(trng) .and. .not. present(tpts)) then
@@ -162,74 +166,87 @@ contains
       end if
       !
       if (present(trng) .and. present(tpts)) then
-         stop '** Error: Please provide only either time range or time points only'
+         stop '** Error: Please provide either time range or time points only'
       end if
 
       ! validate froots
       if (present(froots) .and. .not. present(nfroots)) then
-         stop '** Error: Please provide `nroots` if `froots` provided'
+         stop '** Error: Please provide n of roots `nfr` if `froots()` is provided'
       end if
 
-      ! init object (default: auto step, mode 5)
+      ! validate dt (for trange, dt=auto)
+      dtw = 1d-3     
+      if (present(dt)) dtw = dt
+
+
+      ! ok, init object
       call this%init(size(y0))
+      
+      ! 1st call y = y0 (initial conditions)
       yw = y0
 
-      ! if auto dt mode set tcritic 
+      ! if time range provided, set up
       if (present(trng)) then
+      
          ! check size
          if (size(trng) /= 2) then
             print *, '** Error: Plese provide time range `trng` as a 2-value array'
             stop
          end if
 
+         ! 1st call t = trng(1)
          tw = trng(1)         
-         this%rwork(1) = trng(2)            
 
-         dt0 = 1d-3      ! default initial dt for auto mode
-         if (present(dt)) dt0 = dt
+         ! set tstop
+         this%rwork(1) = trng(2)            
          
-         tout = tw + dt0     
+         ! 1st desired tout
+         tout = tw + dtw
       end if
 
-      ! if manual dt, set manual mode
+      ! if time points provided, set up
       if (present(tpts)) then
-         this%itask = 1  ! manual dt: solve odt(tout)
-         this%iopt  = 0  ! no options
+      
+         ! check size
+         if (size(tpts) < 2) then
+            print *, '** Error: Plese provide time points `tpts` at least as a 2-value array'
+            stop
+         end if
+         
+         this%itask = 1  ! manual dt: solve odt at t=tpts(i)
+         this%iopt  = 0  ! no options present in rwork, iwork  
+         
+         ! 1st call
          tw         = tpts(1)
          tout       = tpts(2)
       end if
 
-      ! use jac if provided
+      ! use jac if provided (normal jacobian)
       if (present(jac)) then
-         ! user-provided, normal (full) jacobian
          this%jtype = 1
       end if
 
-      ! validate rtol
+      ! set rtol
       if (present(rtol)) then
-         if (size(rtol) /= size(this%rtol)) then
-            deallocate(this%rtol)
-            allocate(this%rtol(size(rtol)))
+         if (size(rtol) /= 1 .and. size(rtol) /= this%neq) then
+            stop "** Error: relative tolerance `rtol` lenght should be 1 or `neq`"
          end if
+         
+         if (size(this%rtol) /= size(rtol)) deallocate(this%rtol)
          this%rtol = rtol
       end if
 
-      ! validate atol
+      ! set atol
       if (present(atol)) then
-         if (size(atol) /= size(this%atol)) then
-            deallocate(this%atol)
-            allocate(this%atol(size(atol)))
+         if (size(atol) /= 1 .and. size(atol) /= this%neq) then
+            stop "** Error: absolute tolerance `atol` lenght should be 1 or `neq`"
          end if
+         
+         if (size(this%atol) /= size(atol)) deallocate(this%atol)
          this%atol = atol
       end if
 
-      ! validate tol sizes
-      if ( size(this%rtol) /= 1 .and. size(this%rtol) /= this%neq .or.  &
-           size(this%atol) /= 1 .and. size(this%atol) /= this%neq ) then
-            stop "** Error: Please provide either one (scalar) or full (array) `rtol`|`atol` values"
-      end if
-
-      ! set itol (default = 1)
+      ! set itol flag
       if ( size(this%rtol) == 1 .and. size(this%atol) == 1) then
          this%itol = 1
       else if (size(this%rtol) == 1 .and. size(this%atol) > 1) then
@@ -240,67 +257,268 @@ contains
          this%itol = 4
       end if
      
-      ! allocate working arrays (dynamic growing)
-      allocate(dtw(this%nchunk))
-      allocate(dyw(this%nchunk, this%neq))
-      allocate(this%jroot(this%nchunk,this%neq))
-
-      ! allocate final and working jroot arrays
+      ! allocate nfroot if froots() provided
       if (present(froots)) then
-         this%nroots = nfroots
-         allocate(jrootw(nfroots))
-      else
-         allocate(jrootw(1))
+         this%nfr = nfroots
+         allocate(nfrootw(nfroots))
       end if
 
-      ! init loop
-      itot  = 1
-      ichnk = 1
-      iroot = 1
+      ! initial allocation for results arrays (dynamic growing @ nchunk elements!)
+      allocate (t1(this%nchunk))
+      allocate (y1(this%nchunk, this%neq))
+      
+      ! init pointers
+      pt => t1
+      py => y1
+
+      ! same if froots() provided
+      if (present(froots)) then
+         allocate (troot1(this%nchunk))
+         allocate (yroot1(this%nchunk, this%neq))
+         allocate (nfroot1(this%nchunk,this%nfr))
+
+         ptroot => troot1
+         pyroot => yroot1
+         pnfroot => nfroot1
+      end if
+  
+      ! init loop, one step per dt 
+      
+      it  = 0
+      ir = 0
       doAnother = .True.
 
       do while(doAnother)
-
+      
          call dlsodar( fdy, size(y0), yw, tw, tout,         &
                      this%itol, this%rtol, this%atol,       &
                      this%itask, this%istate, this%iopt,    &
                      this%rwork, size(this%rwork),          &
                      this%iwork, size(this%iwork),          &
                      jac, this%jtype,                       &
-                     froots, this%nroots, jrootw )
+                     froots, this%nfr, nfrootw )
 
-         print *, itot, tw, yw
-  
+         ! print *, it, tout, tw, yw
+
          if (this%istate < 0) then
             print *, '** Error: ISTATE =', this%istate
             stop
          end if
 
-         ! root found?
-         if (this%istate .eq. 3) print *, '# -- root found :',  jrootw
 
-         ! set up next iter
-         this%istate = 2
-         ichnk = ichnk + 1
-         itot = itot + 1
+         select case (this%istate)
+         
+            ! normal result, no root: advance t
+            case (2)
+               it = it+1
+            
+               ! check pt/py arrays occupation; increase if required
+               if (it > size(pt)) then
+                  if (associated(pt, target=t1)) then
 
-         ! another loop?
-         select case (this%itask)
-            case (1)
-               if (itot < size(tpts)) then
-                  tout = tpts(itot+1)
-               else
-                  doAnother = .False.
+                     ! allocate space in t2/y2
+                     allocate (t2(it-1 + this%nchunk))
+                     allocate (y2(it-1 + this%nchunk, this%neq))
+
+                     ! copy t1,y1 -> t2,y2
+                     t2(:it-1) = t1 
+                     y2(:it-1,:) = y1
+                     
+                     ! update pointers
+                     pt => t2
+                     py => y2
+                     
+                     ! release t1,y1
+                     deallocate(t1)
+                     deallocate(y1)
+
+                  else ! pt2 is allocated
+
+                     allocate (t1(it-1 + this%nchunk))
+                     allocate (y1(it-1 + this%nchunk, this%neq))
+
+                     t1(:it-1) = t2 
+                     y1(:it-1,:) = y2
+
+                     pt => t1
+                     py => y1
+                     
+                     deallocate(t2)
+                     deallocate(y2)
+
+                  end if
                end if
 
-            case (5)
-               doAnother = tw < trng(2)
+               ! save data		
+               pt(it) = tw
+               py(it,:) = yw
+
+               ! another loop?
+               select case (this%itask)
+            
+                  ! t = fixed points, tout=set, dt=manual
+                  case (1) 
+                     if (it < size(tpts)-1) then
+                        tout = tpts(2+it)
+                     else
+                        doAnother = .False.
+                     end if
+            
+                  ! t = range, tout=auto, dt=auto
+                  case (5) 
+                     doAnother = tw < trng(2)
+               
+               end select
+
+                     
+            ! special result, root found
+            case (3)
+               ir = ir + 1
+               ! print *, '# -- root found :', tw, ir, nfrootw
+
+               ! check ptroot/pyroot/pnfroot arrays occupation; increase if required
+               if (ir > size(ptroot)) then
+                  if (associated(ptroot, target=troot1)) then
+
+                     ! allocate space in troot2/yroot2/nfroot2
+                     allocate (troot2(ir-1 + this%nchunk))
+                     allocate (yroot2(ir-1 + this%nchunk, this%neq))
+                     allocate (nfroot2(ir-1 + this%nchunk, this%nfr))
+                     
+                     ! copy troot1,yroot1,nfroot1 -> troot2,yroot2,nfroot2
+                     troot2(:ir-1)    = troot1 
+                     yroot2(:ir-1,:)  = yroot1
+                     nfroot2(:ir-1,:) = nfroot1
+
+                     ! update pointers
+                     ptroot  => troot2
+                     pyroot  => yroot2
+                     pnfroot => nfroot2
+                     
+                     ! release mem
+                     deallocate(troot1)
+                     deallocate(yroot1)
+                     deallocate(nfroot1)
+
+                  else ! troot2 is allocated
+
+                     ! allocate space in troot1/yroot1/nfroot1
+                     allocate (troot1(ir-1 + this%nchunk))
+                     allocate (yroot1(ir-1 + this%nchunk, this%neq))
+                     allocate (nfroot1(ir-1 + this%nchunk, this%nfr))
+                     
+                     ! copy troot2,yroot2,nfroot2 -> troot1,yroot1,nfroot1
+                     troot1(:ir-1)    = troot2
+                     yroot1(:ir-1,:)  = yroot2
+                     nfroot1(:ir-1,:) = nfroot2
+
+                     ! update pointers
+                     ptroot  => troot1
+                     pyroot  => yroot1
+                     pnfroot => nfroot1
+                     
+                     ! release mem
+                     deallocate(troot2)
+                     deallocate(yroot2)
+                     deallocate(nfroot2)
+
+                  end if
+               end if
+
+               ! save data		
+               ptroot(ir) = tw			
+               pyroot(ir,:) = yw
+               pnfroot(ir,:) = nfrootw
+            
          end select
+         
+         ! set up next iter
+         this%istate = 2
   
       end do
+      
+      ! save results
+      ! a: t, u
+      this%t = pt(1:it)
+      this%y = py(1:it,:)
+      !
+      ! b: roots
+      if (present(froots)) then
+         this%troot = ptroot(1:ir)
+         this%yroot = pyroot(1:ir,:)
+         this%nfroot = pnfroot(1:ir,:)
+      end if
 
+      ! release mem
+      if (allocated(t1)) deallocate(t1)
+      if (allocated(t2)) deallocate(t2)
+      if (allocated(y1)) deallocate(y1)
+      if (allocated(y2)) deallocate(y2)
+      !     
+      if (present(froots)) then
+         if (allocated(troot1)) deallocate(troot1)
+         if (allocated(troot2)) deallocate(troot2)
+         if (allocated(yroot1)) deallocate(yroot1)
+         if (allocated(yroot2)) deallocate(yroot2)
+         if (allocated(nfroot1)) deallocate(nfroot1)
+         if (allocated(nfroot2)) deallocate(nfroot2)
+      end if
+
+      ! print *, ''
+      ! print *, '-- main loop done'
+      ! print *, ''
+
+      ! print *, ' --- t: shape=', shape(this%t), ', it=', it
+      ! print *, this%t
+      ! print *, ''
+      
+      ! print *, ' --- y: shape=', shape(this%y), ', it=', it
+      ! call print_mat_r8(this%y)
+      ! print *, ''
+            
+      ! if (present(froots)) then
+      !    print *, ''
+      !    print *, ' +-- troot: size=', size(this%troot), ', ir=', ir
+      !    print *, this%troot
+      !    print *, ''
+
+      !    print *, ' --- yroot: size=', shape(this%yroot), ', ir=', ir
+      !    call print_mat_r8( this%yroot )
+      !    print *, ''
+
+      !    print *, ' --- nroot: size=', shape(this%nfroot), ', ir=', ir
+      !    call print_mat_r8( 1d0*this%nfroot, 'F12.0' )
+      !    print *, ''
+      ! end if
 
     end subroutine solve
+    
+    
+    subroutine print_mat_r8(A, fmt_)
+      
+      real(8), intent(in) :: A(:,:)                !! matrix to print
+      character(*),optional, intent(in) :: fmt_    !! print format (default:'ES12.4').
+      
+      ! my vars
+      character(80) :: nc, fmt, fmt0
+      integer :: i
+
+      fmt = 'ES12.4'
+      
+      if (present(fmt_)) then
+         fmt = fmt_
+      end if
+
+      write(nc,*) size(A,2)
+      nc = adjustl(nc)
+   
+      write (fmt0, *)  '(' // trim(nc) // '(' // trim(fmt) // '))'
+   
+      do i=1, size(A,1)
+         print fmt0, A(i,:)
+      end do
+      
+   end subroutine print_mat_r8
 
 
 end module scifor_ode

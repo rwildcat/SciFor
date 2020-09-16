@@ -1,10 +1,17 @@
 ! SciFor tests
-! Library: FFTW 3 (http://www.fftw.org)
 !
-! RSolano, Feb/27/2020
+!> fft_scifor-test.f90
+! Purpose    : Demonstrations of the SciFor interace to FFT libraries
+! Author     : Ramon Solano
+!              ramon.solano at gmail.com
+!              Colima, Mexico
+! Date		 : Feb/27/2020 
+! Libraries	 :  FFTW 3 (http://www.fftw.org)
+! To compile :
+!  `$ gfortran ode_scifor-test.f90 -logpf `pkg-config --cflags --libs scifor`
 !
 ! To compile the SciFor:
-!		$ gfortran fft_scifor-test.f90 -l ogpf `pkg-config --cflags --libs scifor` 
+!		$ gfortran fft_scifor-test.f90 -logpf `pkg-config --cflags --libs scifor` 
 !
 
 program fft_scifor_test
@@ -51,7 +58,7 @@ program fft_scifor_test
 	! now a nice plot
 	call plt%multiplot(3,1) 
 
-	call plt%title('Original data (y = 1.5 sin(5) + sin(10t)+ .5 sin(20t))')
+	call plt%title('Original data (y = 1.5 sin(5t) + sin(10t)+ .5 sin(20t))')
 	call plt%xlabel('t (s)')
 	call plt%ylabel('A')
 	call plt%plot(t, y, 'w lines')
