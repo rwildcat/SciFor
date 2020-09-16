@@ -3,7 +3,9 @@
 # Ramon Solano <ramon.solano@gmail.com>
 #
 # apr/24/2020
-#    initial version
+#		initial version
+# sep/16/20
+#		use `-framework Accelerate` If -DBLA_VENDOR undefined and oan Mac OS
 # -----------------------------------------------------------------------------
 
 # -- prerequisites
@@ -18,9 +20,8 @@ target_link_libraries (scifor odepack)
 # or include odepack library objects directly w/o library
 # add_library(scifor SciFor.f90 scifor_ode.f90 $<TARGET_OBJECTS:odepack>)
 
-# -- force to use preprocessing (even *.f90 instead *.F90)
+# -- force to use preprocessing for DEFINED statement
 SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp")
-
 
 # -- find_pkg for pc config file
 find_package (PkgConfig)
@@ -32,9 +33,45 @@ if (PkgConfig_FOUND)
 	string(REPLACE ":" ";" PC_PATH "${PC_PATHS}")
 	list(GET PC_PATH 0 PC_PATH0)
 
-	# init my CFLAGS and LDFLAGS
+	# init my CFLAGS and LDFLAGS for scifor .pc file
 	set (MyCFLAGS "-I${CMAKE_INSTALL_PREFIX}/include")
 	set (MyLDFLAGS "-L${CMAKE_INSTALL_PREFIX}/lib;-lscifor")
+endif()
+
+# -- lapack
+# macOS: macport install *pc files in /opt/local/lib/lapack/pkgconfig/
+#	make sure to symlink or add to $PKG_CONFIG_PATH
+
+# warn about the `Accelerated` framework
+if (APPLE AND NOT BLA_VENDOR)
+	message("** Mac OS detected. Using Apples 'Accelerate' framework")
+	message("** To override, use: `cmake .. -DBLA_VENDOR=<XXX>`; XXX=All, Intel, etc.")
+	set (BLA_VENDOR "Apple")
+endif()
+
+find_package (LAPACK)
+if (LAPACK_FOUND)
+	message(>> "LAPACK found: LAPACK_LIBRARIES = ${LAPACK_LIBRARIES}")
+	target_link_libraries (scifor ${LAPACK_LIBRARIES})
+	add_compile_definitions (LAPACK)
+
+	# pk-config info file
+	if (BLA_VENDOR STREQUAL "Apple")
+			list (APPEND MyLDFLAGS "-framework Accelerate")
+	else()
+		if (PkgConfig_FOUND)
+				pkg_search_module (LAPACK_M lapack)
+				if (LAPACK_M_MODULE_NAME)
+					list (APPEND MyCFLAGS  ${LAPACK_M_CFLAGS})
+					list (APPEND MyLDFLAGS ${LAPACK_M_LDFLAGS})					
+			else()
+				message ("** WARNING: LAPACK pkg-config info NOT found")
+			endif()
+		endif()
+	endif()
+
+else()
+	message ("** WARNING LAPACK not found")
 endif()
 
 
@@ -57,32 +94,6 @@ else()
 	message ("** WARNING: GNU Fortran Scientific Library (fgsl) not found")
 endif()
 
-
-# -- lapack
-# macOS: macport install *pc files in /opt/local/lib/lapack/pkgconfig/
-#	make sure to symlink or add to $PKG_CONFIG_PATH
-find_package (LAPACK)
-if (LAPACK_FOUND)
-
-	message ("--  LAPACK_LIBRARIES = ${LAPACK_LIBRARIES}")
-	target_link_libraries (scifor ${LAPACK_LIBRARIES})
-	add_compile_definitions (LAPACK)
-
-	# pk-config file
-	if (PkgConfig_FOUND)
-		pkg_search_module (LAPACK_M lapack)
-		if (LAPACK_M_MODULE_NAME)
-			list (APPEND MyCFLAGS  ${LAPACK_M_CFLAGS})
-			list (APPEND MyLDFLAGS ${LAPACK_M_LDFLAGS})
-			message(" -->> MyLDFLAGS       =${MyLDFLAGS}")
-		else()
-			message ("-- WARNING: LAPACK pkg-config info NOT found")
-		endif()
-	endif()
-else()
-	message ("** WARNING LAPACK not found")
-
-endif()
 
 # -- FFTW3
 find_package (FFTW3)
