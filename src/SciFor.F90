@@ -75,6 +75,7 @@
 module SciFor
    
    use scifor_ode
+   use scifor_random_mod
    implicit none
 
    ! default
@@ -82,6 +83,7 @@ module SciFor
 
    ! except
    public   :: Odesolv
+   public   :: Scifor_random
    public   :: io_print_mat, 	numfor_linspace
     				
 #ifdef LAPACK    				 

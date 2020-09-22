@@ -10,15 +10,18 @@
 
 # -- prerequisites
 add_subdirectory (odepack)
+add_subdirectory (randlib)
 
 # -- main target
-add_library (scifor SciFor.f90 scifor_ode.f90)
+# add local libraries (as included objects!)
+add_library (scifor SciFor.f90 
+		scifor_ode.f90 scifor_random.f90
+		$<TARGET_OBJECTS:odepack>
+		$<TARGET_OBJECTS:randlib>  
+		)
 
-# add odepack library (objects!)
-target_link_libraries (scifor odepack)
-
-# or include odepack library objects directly w/o library
-# add_library(scifor SciFor.f90 scifor_ode.f90 $<TARGET_OBJECTS:odepack>)
+# included directories
+target_include_directories(scifor PUBLIC ${CMAKE_BINARY_DIR}/src/randlib)
 
 # -- force to use preprocessing for DEFINED statement
 SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -cpp")

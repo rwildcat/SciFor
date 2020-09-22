@@ -8,7 +8,7 @@
 
 
 # -- main target
-add_library(odepack OBJECT opkdmain.f opkda1.f opkda2.f)
+add_library (odepack OBJECT opkdmain.f opkda1.f opkda2.f)
 
 # -- set fortran dialect to legacy
-SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -std=legacy -w")
+set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -std=legacy -w")
