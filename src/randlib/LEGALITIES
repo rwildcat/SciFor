@@ -1,0 +1,97 @@
+                               Legalities
+                               ==========
+
+    We place our efforts in writing this package in the public domain.
+    However, code from ACM publications is subject to the ACM policy
+    (below).
+                                    
+                              References
+                              ==========
+
+                            Base Generator
+                            --------------
+
+The base generator and all code in the ecuyer_cote_mod come from the
+reference:
+
+P. L'Ecuyer and S. Cote. (1991) ``Implementing a Random Number
+Package with Splitting Facilities.'' ACM Trans. on Math. Softw. 17:1, pp
+98-111.We transliterated the Pascal of the reference to Fortran 95.
+                                    
+                   The Beta Random Number Generator
+                    ================================
+
+R.  C. H.  Cheng (1978) ``Generating  Beta   Variates with Nonintegral
+Shape Parameters.'' Communications  of the ACM, 21:317-322 (Algorithms
+B and BC)
+                                    
+                 The Binomial Random Number Generator
+                 ====================================
+
+Kachitvichyanukul, V.  and  Schmeiser, B. W.  (1988) ``Binomial Random
+Variate Generation.'' Communications  of the ACM,  31: 216. (Algorithm
+BTPE.)
+                                    
+           The Standard Exponential Random Number Generator
+           ================================================
+
+Ahrens,  J.H. and  Dieter, U. (1972)  ``Computer  Methods for Sampling
+from the Exponential and Normal Distributions.'' Communications of the
+ACM, 15: 873-882. (Algorithm SA.)
+                                    
+              The Standard Gamma Random Number Generator
+              ==========================================
+
+Ahrens, J.H. and Dieter, U.   (1982) ``Generating Gamma Variates by  a
+Modified Rejection Technique.''  Communications of the ACM, 25: 47-54.
+(Algorithm SA.)
+                                    
+             The Standard Normal Random Number Generator
+             ===========================================
+
+Ahrens, J.H. and Dieter,  U. (1973) ``Extensions of Forsythe's  Method
+for Random Sampling from   the Normal Distribution.''   Math. Comput.,
+27:927 - 937. Algorithm FL (method=5)
+
+                       ACM Policy on Use of Code
+                       =========================
+                 Here is the software Policy of the ACM.
+
+              Submittal of an algorithm  for publication in one of the
+              ACM  Transactions implies that  unrestricted use  of the
+              algorithm  within  a  computer is  permissible.  General
+              permission to copy  and distribute the algorithm without
+              fee is granted provided that  the copies are not made or
+              distributed  for direct  commercial  advantage. The  ACM
+              copyright notice  and the  title of the  publication and
+              its date appear, and notice  is given that copying is by
+              permission    of   the    Association    for   Computing
+              Machinery. To copy  otherwise, or to republish, requires
+              a  fee  and/or  specific  permission. Krogh,  F.  (1997)
+              ``Algorithms  Policy.''  ACM  Tran.  Math.   Softw.  13,
+              183-186.
+
+We do not know the policy  of the Royal Statistical Society; they have
+discontinued  publishing algorithms.  However, they  made a  number of
+these  programs available  on Statlib  on condition  that there  be no
+charge for their distribution.
+
+Here is our standard disclaimer.
+
+                                     NO WARRANTY
+               
+WE  PROVIDE ABSOLUTELY  NO WARRANTY  OF ANY  KIND EITHER  EXPRESSED OR
+IMPLIED,  INCLUDING BUT  NOT  LIMITED TO,  THE  IMPLIED WARRANTIES  OF
+MERCHANTABILITY AND FITNESS FOR  A PARTICULAR PURPOSE. THE ENTIRE RISK
+AS TO THE  QUALITY AND PERFORMANCE OF THE PROGRAM  IS WITH YOU. SHOULD
+THIS PROGRAM  PROVE DEFECTIVE,  YOU ASSUME THE  COST OF  ALL NECESSARY
+SERVICING, REPAIR  OR CORRECTION.IN NO  EVENT SHALL THE  UNIVERSITY OF
+TEXAS OR  ANY OF ITS  COMPONENT INSTITUTIONS INCLUDING M.  D. ANDERSON
+HOSPITAL BE  LIABLE TO  YOU FOR DAMAGES,  INCLUDING ANY  LOST PROFITS,
+LOST  MONIES, OR  OTHER SPECIAL,  INCIDENTAL OR  CONSEQUENTIAL DAMAGES
+ARISING OUT OF THE USE OR  INABILITY TO USE (INCLUDING BUT NOT LIMITED
+TO LOSS OF  DATA OR DATA OR ITS ANALYSIS  BEING RENDERED INACCURATE OR
+LOSSES  SUSTAINED BY  THIRD  PARTIES) THE  PROGRAM.
+
+(Above NO WARRANTY modified from the GNU NO WARRANTY statement.)
+                                     
